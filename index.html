@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#4a7c59">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="שמפ">
+  <title>שמפ</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --g:  #4a7c59;
+      --gm: #6aab7a;
+      --gl: #c8e6c9;
+      --bg: #f1f8f3;
+      --be: #f5f0e8;
+      --tx: #2a3a2c;
+      --tl: #6b7d6c;
+      --sh: 0 2px 10px rgba(74,124,89,.13);
+    }
+    body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;max-width:520px;margin:0 auto;}
+
+    /* Header */
+    .hdr{background:var(--g);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:200;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+    .logo{width:44px;height:44px;background:var(--be);border-radius:10px;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+    .title{font-size:18px;font-weight:700;flex:1;}
+    .hdr-btn{background:none;border:none;cursor:pointer;color:rgba(255,255,255,.8);padding:4px;display:flex;align-items:center;}
+    .hdr-btn svg{width:22px;height:22px;}
+    .sync{width:8px;height:8px;border-radius:50%;background:#aaa;flex-shrink:0;transition:background .4s;}
+    .sync.sy{background:#f5c842;} .sync.ok{background:#6aab7a;} .sync.er{background:#e08080;}
+
+    /* Nav */
+    .nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:520px;background:#fff;border-top:1.5px solid var(--gl);display:flex;z-index:200;}
+    .nb{flex:1;padding:10px 8px 14px;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--tl);font-size:12px;font-family:inherit;transition:color .2s;}
+    .nb svg{width:22px;height:22px;} .nb.on{color:var(--g);}
+
+    /* Pages */
+    .pg{display:none;padding:14px 14px 90px;}
+    .pg.on{display:block;}
+
+    /* Cards */
+    .card{background:#fff;border-radius:16px;padding:18px;box-shadow:var(--sh);margin-bottom:14px;}
+    .ct{font-size:15px;font-weight:700;color:var(--g);padding-bottom:10px;margin-bottom:14px;border-bottom:2px solid var(--gl);}
+
+    /* Form */
+    .fg{margin-bottom:14px;}
+    .fl{display:block;font-size:13px;font-weight:600;margin-bottom:5px;}
+    .fi,.fs{width:100%;padding:10px 13px;border:1.5px solid var(--gl);border-radius:10px;font-size:15px;color:var(--tx);background:#fff;outline:none;transition:border-color .2s;-webkit-appearance:none;font-family:inherit;}
+    .fi:focus,.fs:focus{border-color:var(--g);}
+    .tw{position:relative;}
+    .ts{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--tl);font-size:14px;pointer-events:none;}
+    .tw .fi{padding-left:32px;}
+
+    /* Date nav */
+    .dn{display:flex;align-items:center;gap:8px;}
+    .da{background:var(--gl);border:none;border-radius:8px;width:36px;height:44px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--g);font-size:22px;flex-shrink:0;transition:background .15s;}
+    .da:active{background:var(--gm);color:#fff;} .da:disabled{opacity:.3;cursor:default;}
+    .db{flex:1;border:1.5px solid var(--gl);border-radius:10px;padding:8px 12px;background:var(--bg);text-align:center;line-height:1.4;user-select:none;}
+    .db.td{border-color:var(--g);}
+    .ddow{font-size:11px;color:var(--tl);font-weight:400;display:block;}
+    .tbadge{display:none;font-size:10px;background:var(--g);color:#fff;border-radius:20px;padding:1px 7px;margin-top:2px;font-weight:600;}
+    .db.td .tbadge{display:inline-block;}
+
+    /* Buttons */
+    .sbtn{width:100%;padding:13px;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s;}
+    .sbtn:active{background:var(--gm);} .sbtn:disabled{opacity:.6;cursor:wait;}
+    .toast{text-align:center;color:var(--g);font-size:14px;font-weight:600;padding:8px;display:none;}
+    .tr{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px;}
+    .tl2{color:var(--tl);min-width:90px;}
+    .pill{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600;}
+    .es{text-align:center;color:var(--tl);font-size:13px;padding:18px 0;}
+
+    /* Chart */
+    .ctop{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+    .mnav{display:flex;align-items:center;gap:6px;}
+    .mb{background:var(--gl);border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--g);font-size:20px;}
+    .ml{font-size:15px;font-weight:700;color:var(--g);min-width:110px;text-align:center;}
+    .cso{background:#fff;border-radius:16px;padding:14px 10px 10px;box-shadow:var(--sh);overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:14px;}
+    .csi{display:inline-block;vertical-align:top;}
+    .lr{display:flex;align-items:flex-start;}
+    .ls{flex-shrink:0;}
+    .dc{flex-shrink:0;display:flex;flex-direction:column;align-items:center;}
+    .dbar{width:100%;height:9px;border-radius:3px;margin-bottom:4px;}
+    .cv{writing-mode:vertical-rl;transform:rotate(180deg);font-size:9px;color:var(--tl);overflow:hidden;white-space:nowrap;line-height:1.3;max-height:72px;}
+    .lg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+    .li{display:flex;align-items:center;gap:5px;font-size:11px;}
+    .ld{width:14px;height:14px;border-radius:4px;flex-shrink:0;}
+
+    /* Setup */
+    .sth{text-align:center;padding:20px 0 14px;}
+    .sthi{font-size:44px;margin-bottom:10px;}
+    .sth h2{font-size:19px;font-weight:700;color:var(--g);margin-bottom:6px;}
+    .sth p{font-size:13px;color:var(--tl);line-height:1.5;}
+    .steps{list-style:none;counter-reset:s;}
+    .steps li{counter-increment:s;display:flex;gap:10px;margin-bottom:14px;font-size:13px;line-height:1.5;}
+    .steps li::before{content:counter(s);background:var(--g);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;margin-top:1px;}
+    .cb{background:#1e1e1e;color:#d4d4d4;font-family:monospace;border-radius:10px;padding:12px;font-size:11px;overflow-x:auto;white-space:pre;margin:8px 0;line-height:1.5;max-height:200px;overflow-y:auto;}
+    .cpbtn{background:var(--gl);border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--g);cursor:pointer;font-family:inherit;}
+    .ta{width:100%;padding:10px;border:1.5px solid var(--gl);border-radius:10px;font-size:13px;font-family:monospace;direction:ltr;resize:none;height:60px;outline:none;}
+    .ta:focus{border-color:var(--g);}
+    .cbtn{width:100%;padding:13px;background:var(--g);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:8px;}
+    .us{font-size:12px;margin-top:6px;min-height:18px;}
+    .us.ok{color:var(--g);} .us.er{color:#c0392b;}
+    .link{color:var(--g);text-decoration:none;font-weight:600;}
+
+    /* Settings */
+    .url-box{background:#f8f9fa;border:1px solid var(--gl);border-radius:10px;padding:10px;font-size:11px;font-family:monospace;direction:ltr;word-break:break-all;color:var(--tl);margin-bottom:10px;}
+    .out-btn{width:100%;padding:11px;background:#fff;color:#c0392b;border:1.5px solid #f5bfbf;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:8px;}
+    .sec-btn{width:100%;padding:11px;background:#fff;color:var(--tl);border:1.5px solid var(--gl);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:8px;}
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="hdr" id="app-header" style="display:none;">
+  <div class="logo">
+    <img src="icon-192.png" width="44" height="44" alt="לוגו" style="border-radius:10px;display:block;">
+  </div>
+  <h1 class="title">שמפ</h1>
+  <div class="sync" id="sync-dot"></div>
+  <button class="hdr-btn" onclick="gotoPage('settings')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+    </svg>
+  </button>
+</header>
+
+<!-- PAGE: SETUP -->
+<div id="page-setup" class="pg on" style="padding-top:20px;">
+  <div class="card">
+    <div class="sth">
+      <div class="sthi">&#x1F33F;</div>
+      <h2>הגדרה ראשונה</h2>
+      <p>רק פעם אחת — 5 דקות, ואז הכל עובד אוטומטית.</p>
+    </div>
+    <div class="ct">שלב 1 — יצירת גיליון Google</div>
+    <ol class="steps">
+      <li>
+        פתחי <a href="https://sheets.new" target="_blank" class="link">sheets.new</a> (ייפתח גיליון חדש).
+      </li>
+      <li>
+        תני לו שם: <strong>שמפ</strong> (לחצי על "Untitled spreadsheet" למעלה).
+      </li>
+    </ol>
+
+    <div class="ct">שלב 2 — הוספת Apps Script</div>
+    <ol class="steps">
+      <li>בגיליון: תפריט <strong>Extensions ← Apps Script</strong>.</li>
+      <li>מחקי את הקוד שיש (function myFunction...) והדביקי במקומו את הקוד הזה:
+        <div style="display:flex;justify-content:flex-end;margin:4px 0;">
+          <button class="cpbtn" id="copy-script-btn" onclick="copyScript()">העתק קוד</button>
+        </div>
+        <div class="cb" id="script-display"></div>
+      </li>
+      <li>לחצי על &#x1F4BE; <strong>Save</strong> (Ctrl+S).</li>
+      <li>לחצי <strong>Deploy ← New deployment</strong>.</li>
+      <li>לצד "Select type" בחרי <strong>Web app</strong>.</li>
+      <li>בשדה <strong>Who has access</strong> בחרי <strong>Anyone</strong>.</li>
+      <li>לחצי <strong>Deploy</strong> &rarr; אשרי הרשאות (Allow) &rarr; העתיקי את ה-<strong>Web app URL</strong>.</li>
+    </ol>
+
+    <div class="ct">שלב 3 — חיבור לאפליקציה</div>
+    <div class="fg">
+      <label class="fl">הדביקי כאן את ה-Web app URL:</label>
+      <textarea class="ta" id="url-input" placeholder="https://script.google.com/macros/s/.../exec" rows="2"></textarea>
+      <button class="cbtn" onclick="saveUrl()">התחברי &#x2192;</button>
+      <div class="us" id="url-status"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: ENTRY -->
+<div id="page-entry" class="pg">
+  <div class="card">
+    <div class="ct">הזנת נתונים יומי</div>
+    <div class="fg">
+      <label class="fl">תאריך</label>
+      <div class="dn">
+        <button class="da" id="date-prev" onclick="changeDay(-1)">&#x203A;</button>
+        <div class="db td" id="date-box">
+          <span class="ddow" id="date-dow"></span>
+          <span id="date-full" style="font-size:15px;font-weight:700;color:var(--tx);display:block;"></span>
+          <span class="tbadge">היום</span>
+        </div>
+        <button class="da" id="date-next" onclick="changeDay(1)">&#x2039;</button>
+      </div>
+    </div>
+    <div class="fg">
+      <label class="fl">טמפרטורת בוקר</label>
+      <div class="tw">
+        <input type="number" id="inp-temp" class="fi" placeholder="36.50" min="35.0" max="38.5" step="0.05" inputmode="decimal">
+        <span class="ts">&#176;C</span>
+      </div>
+    </div>
+    <div class="fg">
+      <label class="fl">תיאור ההפרשה</label>
+      <select id="inp-discharge" class="fs">
+        <option value="">— בחרי —</option>
+        <option>יבש</option><option>דביק</option><option>קרמי</option>
+        <option value="ריריתי">ריריתי (ביצה גולמית)</option>
+        <option>מימי</option><option>כתמים</option><option>דם</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label class="fl">מצב צוואר רחם</label>
+      <select id="inp-cervix" class="fs">
+        <option value="">— בחרי —</option>
+        <option>סגור ונמוך</option><option>חצי פתוח ונמוך</option>
+        <option>חצי פתוח ורך</option><option>פתוח ורך</option>
+      </select>
+    </div>
+    <button class="sbtn" id="save-btn" onclick="saveEntry()">שמור</button>
+    <div class="toast" id="toast">&#x2713; נשמר בהצלחה!</div>
+  </div>
+  <div class="card">
+    <div class="ct" id="sum-title">נתוני היום</div>
+    <div id="sum-body"><div class="es">אין נתונים לתאריך זה</div></div>
+  </div>
+</div>
+
+<!-- PAGE: CHART -->
+<div id="page-chart" class="pg">
+  <div class="ctop">
+    <div class="mnav">
+      <button class="mb" onclick="changeMonth(-1)">&#x203A;</button>
+      <span class="ml" id="month-lbl"></span>
+      <button class="mb" onclick="changeMonth(1)">&#x2039;</button>
+    </div>
+  </div>
+  <div class="cso">
+    <div class="csi" id="chart-inner">
+      <canvas id="myChart"></canvas>
+      <div class="lr" id="labels-row"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ct">מקרא הפרשות</div>
+    <div class="lg" id="legend-grid"></div>
+  </div>
+</div>
+
+<!-- PAGE: SETTINGS -->
+<div id="page-settings" class="pg">
+  <div class="card">
+    <div class="ct">&#x1F4CA; גיליון Google Sheets</div>
+    <p style="font-size:13px;color:var(--tl);margin-bottom:10px;">הנתונים נשמרים בגיליון שלך ב-Google Sheets.</p>
+    <div class="url-box" id="settings-url">—</div>
+    <button class="sec-btn" onclick="syncAll()">&#x21BB; סנכרן עכשיו</button>
+    <button class="sec-btn" style="margin-top:6px;" onclick="changeUrlPrompt()">&#x270F; שני URL</button>
+  </div>
+  <div class="card">
+    <div class="ct">נתונים מקומיים</div>
+    <p style="font-size:13px;color:var(--tl);margin-bottom:12px;">
+      האפליקציה שומרת עותק מקומי לשימוש אופליין. הגיליון הוא המקור הרשמי.
+    </p>
+    <button class="out-btn" onclick="clearCache()">&#x1F5D1; נקה cache מקומי</button>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="nav" id="app-nav" style="display:none;">
+  <button class="nb on" id="nav-entry" onclick="gotoPage('entry')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+      <path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+    </svg>
+    הזנת נתונים
+  </button>
+  <button class="nb" id="nav-chart" onclick="gotoPage('chart')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </svg>
+    גרף
+  </button>
+</nav>
+
+<script>
+/* ─── Constants ─── */
+const DC = {
+  'יבש':'#c9b99a','דביק':'#e8c49a','קרמי':'#f5e0a0',
+  'ריריתי':'#aed9f7','מימי':'#7db9e8','כתמים':'#f5bfbf','דם':'#e08080'
+};
+const MH  = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+const DH  = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+const DAY_W=42, CHART_H=210, MAX_BACK=60;
+
+/* Apps Script code to show in setup */
+const SCRIPT_CODE =
+`function doGet(e) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('נתונים');
+  if (!sheet) {
+    sheet = ss.insertSheet('נתונים');
+    sheet.getRange(1,1,1,5).setValues(
+      [['תאריך','טמפ\\u05f4','הפרשה','צוואר רחם','עודכן']]
+    );
+  }
+  const action = (e.parameter || {}).action || 'get';
+
+  if (action === 'get') {
+    const rows = sheet.getDataRange().getValues();
+    const entries = {};
+    for (let i = 1; i < rows.length; i++) {
+      if (!rows[i][0]) continue;
+      const d = new Date(rows[i][0]);
+      const k = d.getFullYear()+'-'+
+                String(d.getMonth()+1).padStart(2,'0')+'-'+
+                String(d.getDate()).padStart(2,'0');
+      entries[k] = {
+        temp:      rows[i][1] !== '' ? rows[i][1] : null,
+        discharge: rows[i][2] || null,
+        cervix:    rows[i][3] || null
+      };
+    }
+    return out({ok:true, entries});
+  }
+
+  if (action === 'set') {
+    const p = e.parameter;
+    if (!p.date) return out({ok:false, err:'no date'});
+    const temp      = (p.temp !== undefined && p.temp !== '') ? parseFloat(p.temp) : null;
+    const discharge = p.discharge || '';
+    const cervix    = p.cervix    || '';
+    const rows      = sheet.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      if (!rows[i][0]) continue;
+      const d = new Date(rows[i][0]);
+      const k = d.getFullYear()+'-'+
+                String(d.getMonth()+1).padStart(2,'0')+'-'+
+                String(d.getDate()).padStart(2,'0');
+      if (k === p.date) {
+        sheet.getRange(i+1,2,1,4)
+             .setValues([[temp, discharge, cervix, new Date()]]);
+        return out({ok:true});
+      }
+    }
+    const pts = p.date.split('-');
+    sheet.appendRow([
+      new Date(+pts[0], +pts[1]-1, +pts[2]),
+      temp, discharge, cervix, new Date()
+    ]);
+    return out({ok:true});
+  }
+  return out({ok:false, err:'unknown action'});
+}
+
+function out(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}`;
+
+document.getElementById('script-display').textContent = SCRIPT_CODE;
+
+/* ─── State ─── */
+let chartInst = null;
+let viewYear  = new Date().getFullYear();
+let viewMonth = new Date().getMonth();
+function today0(){ const d=new Date(); d.setHours(0,0,0,0); return d; }
+let currentDate = today0();
+
+/* ─── Storage ─── */
+const URL_KEY  = 'fertility_script_url';
+const DATA_KEY = 'fertility';
+function getScriptUrl(){ return localStorage.getItem(URL_KEY)||''; }
+function setScriptUrl(u){ localStorage.setItem(URL_KEY, u.trim()); }
+function getData(){ return JSON.parse(localStorage.getItem(DATA_KEY)||'{}'); }
+function putData(d){ localStorage.setItem(DATA_KEY, JSON.stringify(d)); }
+
+/* ─── Sync dot ─── */
+function dot(s){ document.getElementById('sync-dot').className='sync '+s; }
+
+/* ─── Setup: copy script ─── */
+function copyScript(){
+  navigator.clipboard.writeText(SCRIPT_CODE).then(()=>{
+    const b=document.getElementById('copy-script-btn');
+    b.textContent='✓ הועתק!';
+    setTimeout(()=>b.textContent='העתק קוד',2200);
+  });
+}
+
+/* ─── Setup: save URL ─── */
+async function saveUrl(){
+  const u = document.getElementById('url-input').value.trim();
+  const st = document.getElementById('url-status');
+  if(!u.startsWith('https://script.google.com/')){
+    st.className='us er'; st.textContent='× ה-URL צריך להתחיל ב-https://script.google.com/'; return;
+  }
+  st.className='us'; st.textContent='בודק חיבור...';
+  try {
+    const res = await fetch(u+'?action=get');
+    const json = await res.json();
+    if(json.ok === true){
+      setScriptUrl(u);
+      st.className='us ok'; st.textContent='✓ מחובר! מעביר לאפליקציה...';
+      setTimeout(showApp, 900);
+    } else {
+      st.className='us er'; st.textContent='× השרת ענה אך החזיר שגיאה: '+(json.err||'');
+    }
+  } catch(e){
+    st.className='us er';
+    st.textContent='× לא ניתן להתחבר. וודאי שפרסת כ-Web app עם גישה ל-Anyone.';
+  }
+}
+
+/* ─── Show app ─── */
+function showApp(){
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  document.getElementById('app-header').style.display='flex';
+  document.getElementById('app-nav').style.display='flex';
+  document.getElementById('page-entry').classList.add('on');
+  document.getElementById('nav-entry').classList.add('on');
+  // show URL in settings
+  const u = getScriptUrl();
+  document.getElementById('settings-url').textContent = u ? u.replace(/\/exec.*$/,'/exec') : '—';
+  updateDateDisplay();
+  loadEntryForDate();
+  refreshSummary();
+  buildLegend();
+  document.getElementById('month-lbl').textContent = MH[viewMonth]+' '+viewYear;
+  syncAll();
+}
+
+/* ─── Sheets sync: GET all ─── */
+async function syncAll(){
+  const u = getScriptUrl();
+  if(!u) return;
+  dot('sy');
+  try {
+    const res  = await fetch(u+'?action=get');
+    const json = await res.json();
+    if(json.ok && json.entries){
+      const merged = Object.assign({}, getData(), json.entries);
+      // normalize: filter null-only entries
+      putData(merged);
+      dot('ok');
+      refreshSummary();
+      if(document.getElementById('page-chart').classList.contains('on')) renderChart();
+    } else {
+      dot('er');
+    }
+  } catch(e){
+    console.warn('sync error', e);
+    dot('er');
+  }
+}
+
+/* ─── Sheets sync: set one entry ─── */
+async function pushEntry(dateStr, entry){
+  const u = getScriptUrl();
+  if(!u) return;
+  dot('sy');
+  try {
+    const params = new URLSearchParams({ action:'set', date:dateStr });
+    if(entry.temp != null)      params.set('temp', entry.temp);
+    if(entry.discharge)         params.set('discharge', entry.discharge);
+    if(entry.cervix)            params.set('cervix', entry.cervix);
+    const res  = await fetch(u+'?'+params.toString());
+    const json = await res.json();
+    dot(json.ok ? 'ok' : 'er');
+  } catch(e){
+    console.warn('push error', e);
+    dot('er');
+  }
+}
+
+/* ─── Settings actions ─── */
+function changeUrlPrompt(){
+  const nu = prompt('הדביקי את ה-Web app URL החדש:');
+  if(!nu) return;
+  if(!nu.startsWith('https://script.google.com/')){
+    alert('URL לא תקין'); return;
+  }
+  setScriptUrl(nu);
+  document.getElementById('settings-url').textContent = nu.replace(/\/exec.*$/,'/exec');
+  syncAll();
+}
+
+function clearCache(){
+  if(!confirm('לנקות cache מקומי? הנתונים יישמרו בגיליון.')) return;
+  localStorage.removeItem(DATA_KEY);
+  alert('✓ נוקה. מסנכרן מהגיליון...');
+  syncAll();
+}
+
+/* ─── Date helpers ─── */
+function d2s(date){ return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0'); }
+function fDOW(d){ return 'יום '+DH[d.getDay()]+'׳'; }
+function fFull(d){ return d.getDate()+' ב'+MH[d.getMonth()]+' '+d.getFullYear(); }
+
+function updateDateDisplay(){
+  const t=today0(), isT=d2s(currentDate)===d2s(t);
+  document.getElementById('date-dow').textContent  = fDOW(currentDate);
+  document.getElementById('date-full').textContent = fFull(currentDate);
+  document.getElementById('date-box').classList.toggle('td',isT);
+  const diff=Math.round((t-currentDate)/86400000);
+  document.getElementById('date-next').disabled=diff<=0;
+  document.getElementById('date-prev').disabled=diff>=MAX_BACK;
+}
+
+function changeDay(dir){
+  const d=new Date(currentDate); d.setDate(d.getDate()+dir);
+  const diff=Math.round((today0()-d)/86400000);
+  if(diff<0||diff>MAX_BACK) return;
+  currentDate=d; updateDateDisplay(); loadEntryForDate(); refreshSummary();
+}
+
+/* ─── Page nav ─── */
+function gotoPage(page){
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
+  document.getElementById('page-'+page).classList.add('on');
+  const nb=document.getElementById('nav-'+page);
+  if(nb) nb.classList.add('on');
+  if(page==='chart'){ renderChart(); syncAll(); }
+  if(page==='entry'){ updateDateDisplay(); refreshSummary(); }
+}
+
+/* ─── Form ─── */
+function loadEntryForDate(){
+  const e=getData()[d2s(currentDate)]||{};
+  document.getElementById('inp-temp').value      = e.temp!=null?e.temp:'';
+  document.getElementById('inp-discharge').value = e.discharge||'';
+  document.getElementById('inp-cervix').value    = e.cervix||'';
+}
+
+async function saveEntry(){
+  const entry={
+    temp:      document.getElementById('inp-temp').value ? parseFloat(document.getElementById('inp-temp').value) : null,
+    discharge: document.getElementById('inp-discharge').value||null,
+    cervix:    document.getElementById('inp-cervix').value||null,
+  };
+  const ds=d2s(currentDate);
+  const cache=getData(); cache[ds]=entry; putData(cache);
+  viewYear=currentDate.getFullYear(); viewMonth=currentDate.getMonth();
+  document.getElementById('month-lbl').textContent=MH[viewMonth]+' '+viewYear;
+  if(document.getElementById('page-chart').classList.contains('on')) renderChart();
+  refreshSummary();
+  const btn=document.getElementById('save-btn'), t=document.getElementById('toast');
+  btn.disabled=true; t.style.display='block';
+  setTimeout(()=>{ t.style.display='none'; btn.disabled=false; },2200);
+  await pushEntry(ds, entry);
+}
+
+/* ─── Summary ─── */
+function refreshSummary(){
+  const entry=getData()[d2s(currentDate)];
+  document.getElementById('sum-title').textContent='נתונים ל'+fFull(currentDate);
+  const body=document.getElementById('sum-body');
+  if(!entry||(!entry.temp&&!entry.discharge&&!entry.cervix)){
+    body.innerHTML='<div class="es">אין נתונים לתאריך זה</div>'; return;
+  }
+  let h='';
+  if(entry.temp!=null) h+='<div class="tr"><span class="tl2">🌡 טמפרטורה</span><strong>'+Number(entry.temp).toFixed(2)+'°C</strong></div>';
+  if(entry.discharge){ const c=DC[entry.discharge]||'#ddd'; h+='<div class="tr"><span class="tl2">💧 הפרשה</span><span class="pill" style="background:'+c+'">'+entry.discharge+'</span></div>'; }
+  if(entry.cervix) h+='<div class="tr"><span class="tl2">🔍 צוואר רחם</span><span>'+entry.cervix+'</span></div>';
+  body.innerHTML=h;
+}
+
+/* ─── Chart ─── */
+function dim(y,m){ return new Date(y,m+1,0).getDate(); }
+function changeMonth(dir){
+  viewMonth+=dir;
+  if(viewMonth<0){viewMonth=11;viewYear--;}
+  if(viewMonth>11){viewMonth=0;viewYear++;}
+  renderChart();
+}
+
+function renderChart(){
+  const n=dim(viewYear,viewMonth), data=getData();
+  document.getElementById('month-lbl').textContent=MH[viewMonth]+' '+viewYear;
+  const labels=[],temps=[],discs=[],cervs=[];
+  for(let d=1;d<=n;d++){
+    const k=viewYear+'-'+String(viewMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const e=data[k]||{};
+    labels.push(d); temps.push(e.temp??null); discs.push(e.discharge||null); cervs.push(e.cervix||null);
+  }
+  const cw=50+n*DAY_W;
+  const cv=document.getElementById('myChart');
+  cv.width=cw; cv.height=CHART_H;
+  document.getElementById('chart-inner').style.width=cw+'px';
+  if(chartInst){ chartInst.destroy(); chartInst=null; }
+  chartInst=new Chart(cv,{
+    type:'line',
+    data:{labels,datasets:[{
+      data:temps,borderColor:'#4a7c59',backgroundColor:'rgba(74,124,89,.07)',
+      pointBackgroundColor:temps.map((t,i)=>t!=null?(DC[discs[i]]||'#4a7c59'):'transparent'),
+      pointBorderColor:temps.map(t=>t!=null?'#4a7c59':'transparent'),
+      pointRadius:5,pointHoverRadius:7,borderWidth:2.5,spanGaps:true,tension:.35
+    }]},
+    options:{
+      responsive:false,maintainAspectRatio:false,animation:{duration:0},
+      layout:{padding:{right:10,top:8}},
+      plugins:{legend:{display:false},tooltip:{rtl:true,callbacks:{
+        title:ctx=>'יום '+ctx[0].label+' ב'+MH[viewMonth],
+        label:ctx=>{ const i=ctx.dataIndex,l=[]; if(ctx.parsed.y!=null)l.push('טמפ׳: '+ctx.parsed.y.toFixed(2)+'°C'); if(discs[i])l.push('הפרשה: '+discs[i]); if(cervs[i])l.push('צוואר: '+cervs[i]); return l; }
+      }}},
+      scales:{
+        y:{min:35.8,max:37.1,ticks:{stepSize:.1,font:{size:10},color:'#6b7d6c',callback:v=>v.toFixed(1)},grid:{color:'rgba(74,124,89,.1)'}},
+        x:{ticks:{font:{size:10},color:'#4a7c59',maxRotation:0},grid:{color:'rgba(74,124,89,.06)'},offset:false}
+      }
+    }
+  });
+  requestAnimationFrame(()=>{
+    if(!chartInst) return;
+    const ca=chartInst.chartArea, sp=n>1?(ca.right-ca.left)/(n-1):(ca.right-ca.left);
+    const row=document.getElementById('labels-row');
+    row.innerHTML='';
+    const spc=document.createElement('div'); spc.className='ls'; spc.style.width=Math.max(0,ca.left-sp/2)+'px'; row.appendChild(spc);
+    for(let i=0;i<n;i++){
+      const cell=document.createElement('div'); cell.className='dc'; cell.style.width=sp+'px';
+      const bar=document.createElement('div'); bar.className='dbar';
+      bar.style.background=discs[i]?(DC[discs[i]]||'#ddd'):'#ebebeb';
+      if(discs[i]) bar.title=discs[i];
+      const cv2=document.createElement('div'); cv2.className='cv'; cv2.textContent=cervs[i]||'';
+      cell.appendChild(bar); cell.appendChild(cv2); row.appendChild(cell);
+    }
+  });
+}
+
+function buildLegend(){
+  const g=document.getElementById('legend-grid'); g.innerHTML='';
+  Object.entries(DC).forEach(([n,c])=>{
+    const item=document.createElement('div'); item.className='li';
+    item.innerHTML='<div class="ld" style="background:'+c+'"></div><span>'+n+'</span>';
+    g.appendChild(item);
+  });
+}
+
+/* ─── Bootstrap ─── */
+const existingUrl = getScriptUrl();
+if(existingUrl){
+  showApp();
+} else {
+  document.getElementById('page-setup').classList.add('on');
+}
+
+/* ─── Service Worker ─── */
+if('serviceWorker' in navigator)
+  window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+</script>
+</body>
+</html>
